@@ -1,0 +1,1 @@
+export const useClipResult = () => useState("clipResult", () => false);

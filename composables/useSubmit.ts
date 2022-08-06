@@ -1,0 +1,1 @@
+export const useSubmit = () => useState("isSubmit", () => false);
