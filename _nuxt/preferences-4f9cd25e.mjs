@@ -1,1 +1,0 @@
-import{_ as s,o as n,c,a as _}from"./entry-f37e1690.mjs";const o={__name:"preferences",setup(t,{expose:r}){r();const e={};return Object.defineProperty(e,"__isScriptSetup",{enumerable:!1,value:!0}),e}},a=_("h1",null,"Account Preferences",-1),p=[a];function u(t,r,e,f,l,d){return n(),c("div",null,p)}var m=s(o,[["render",u]]);export{m as default};
