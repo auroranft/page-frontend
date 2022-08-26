@@ -45,6 +45,7 @@ export default defineNuxtConfig({
     // '~/assets/bootstrap-5.2.0-dist/js/bootstrap.bundle.min.js',
     '@instadapp/vue-web3/nuxt'
   ],
+  ssr: false,
   web3 :{
     autoImport: false,
   }
