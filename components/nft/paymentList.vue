@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { JSBI } from '@/constants/jsbi';
 import { AbiItem } from 'web3-utils'
-import { MarketContractAddress } from '@/constants/index';
-import MarketABI from '~~/constants/abis/Market_abi.json';
+import { AuroranNFTQueryContractAddress } from '@/constants/index';
+import AuroranNFTQueryABI from '~~/constants/abis/AuroranNFTQuery.json';
 
 import { INftListItem, INftPayment } from '@/constants/interface/Nft';
 
@@ -27,10 +27,10 @@ const nftPaymentList = ref<INftPayment[]>([]);
 // 获取NFTS Payment List
 async function getNftPaymentList() {
   nftPaymentList.value = [];
-  const contract = new library.value.eth.Contract(MarketABI as AbiItem[], MarketContractAddress[chainId.value]);
-  const txRoundIdByNFTId = await contract.methods.txRoundIdByNFTId(nftInfo.nftId).call();
+  const contract = new library.value.eth.Contract(AuroranNFTQueryABI as AbiItem[], AuroranNFTQueryContractAddress[chainId.value]);
+  const txRoundIdByNFTId = await contract.methods.getTxRoundIdByNFTId(nftInfo.nftInfo.nftId).call();
   for (let index = 1; index <= txRoundIdByNFTId; index++) {
-    const item = await contract.methods.paymentMap(nftInfo.nftId, index).call();
+    const item = await contract.methods.getPaymentMap(nftInfo.nftInfo.nftId, index).call();
     const tempItem = {
       lister: $truncateAccount(item.lister),
       payToken: $truncateAccount(item.payToken),

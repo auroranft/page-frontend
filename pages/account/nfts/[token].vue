@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { AbiItem } from 'web3-utils'
-import { MarketContractAddress } from '@/constants/index';
-import MarketABI from '~~/constants/abis/Market_abi.json';
+import { AuroranNFTQueryContractAddress } from '@/constants/index';
+import AuroranNFTQueryABI from '~~/constants/abis/AuroranNFTQuery.json';
 
 import { INftListItem } from '@/constants/interface/Nft';
 
@@ -12,12 +12,15 @@ definePageMeta({
 const route = useRoute();
 const collectionAddress = route.params.token;
 
+// 加载状态
+const loading = useLoading();
+
 // 引用plugin
 const { $clip, $compare } = useNuxtApp()
 
 const { account, library, chainId } = useWeb3();
-watch([account], () => {
-  if (!!account.value) {
+watch([account, library, chainId], () => {
+  if (!!library.value && !!account.value && !!chainId.value) {
     getNftsList();
   }
 });
@@ -32,44 +35,27 @@ const isCopy = useClipResult();
 const nftsList = ref<INftListItem[]>([]);
 // 获取NFTS
 function getNftsList() {
-  const contract = new library.value.eth.Contract(MarketABI as AbiItem[], MarketContractAddress[chainId.value]);
-  contract.methods.getCurrentNFTId()
+  loading.value = true;
+  nftsList.value = [];
+  const contract = new library.value.eth.Contract(AuroranNFTQueryABI as AbiItem[], AuroranNFTQueryContractAddress[chainId.value]);
+  contract.methods.getMyNFTListByCollection(collectionAddress)
   .call({ from: account.value })
-  .then(async (value: number) => {
-    if (value > 0) {
-      for (let index = 1; index <= value; index++) {
-        const item = await contract.methods.nftById(index).call();
-        if (item.token === collectionAddress) {
-          const collection = await contract.methods.collectionMap(item.token).call();
-          const { data } = await useAsyncData(index.toString(), () => $fetch(item.tokenURI));
-          const tempItem = {
-            ...item,
-            ...{ collection: collection, metadata: data.value },
-          };
-          nftsList.value.push(tempItem);
-        }
-      }
+  .then(async (value: any) => {
+    if (value.length > 0) {
+      const getResult = value.map(async (item: INftListItem, index: number) => {
+        const collection = await contract.methods.getCollection(item.nftInfo.token).call();
+        const { data } = await useAsyncData(index.toString(), () => $fetch(item.nftInfo.tokenURI));
+        const tempItem = {
+          ...item,
+          ...{ nftId: item.nftInfo.nftId, collection: collection, metadata: data.value },
+        };
+        nftsList.value.push(tempItem);
+      });
+      await Promise.all(getResult);
       nftsList.value.sort($compare("nftId"));
     }
+    loading.value = false;
   })
-
-  // const contract = new library.value.eth.Contract(MarketABI as AbiItem[], MarketContractAddress[chainId.value]);
-  // contract.methods.getMyNFTListByCollection(collectionAddress)
-  // .call({ from: account.value })
-  // .then(async (value: any) => {
-  //   if (value.length > 0) {
-  //     const getResult = value.map(async (item: INftListItem, index: number) => {
-  //       const { data } = await useAsyncData(index.toString(), () => $fetch(item.tokenURI));
-  //       const tempItem = {
-  //         ...item,
-  //         ...{ metadata: data.value },
-  //       };
-  //       nftsList.value.push(tempItem);
-  //     });
-  //     await Promise.all(getResult);
-  //     nftsList.value.sort($compare("nftId"));
-  //   }
-  // })
 }
 
 onMounted(() => {
@@ -109,19 +95,19 @@ onMounted(() => {
                   <i v-if="item.collection.approve" class="bi bi-patch-check-fill text-primary"></i>
                 </p>
               </div>
-              <NuxtLink :to="`/account/nfts/${item.token}-${item.tokenId}`" class="ratio ratio-1x1 nft-img">
-                <!-- <img src="~/assets/images/logo.png"> -->
-                <img :src="item.metadata?.fileUrl" />
+              <NuxtLink :to="`/account/nfts/${item.nftInfo.token}-${item.nftInfo.tokenId}`" class="ratio ratio-1x1 nft-img">
+                <img v-if="item.metadata?.fileUrl" :src="item.metadata?.fileUrl" />
+                <img v-else src="~/assets/images/logo.png" />
               </NuxtLink>
               <div class="card-body">
                 <p class="card-text">
-                  <NuxtLink :to="`/account/nfts/${item.token}-${item.tokenId}`">
-                    {{ item.collection.symbol }} - {{ item.tokenId }}
+                  <NuxtLink :to="`/account/nfts/${item.nftInfo.token}-${item.nftInfo.tokenId}`">
+                    {{ item.collection.symbol }} - {{ item.nftInfo.tokenId }}
                   </NuxtLink>
                 </p>
                 <div class="d-flex justify-content-between align-items-center">
                   <div class="btn-group">
-                    <NuxtLink :to="`/account/nfts/${item.token}-${item.tokenId}`">
+                    <NuxtLink :to="`/account/nfts/${item.nftInfo.token}-${item.nftInfo.tokenId}`">
                       <button type="button" class="btn btn-sm btn-outline-primary">View</button>
                     </NuxtLink>
                   </div>

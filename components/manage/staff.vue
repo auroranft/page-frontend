@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { AbiItem } from 'web3-utils'
-import { MarketContractAddress } from '@/constants/index';
-import MarketABI from '~~/constants/abis/Market_abi.json';
+import { AuroranMarketContractAddress } from '@/constants/index';
+import AuroranMarketABI from '~~/constants/abis/AuroranMarket.json';
 
 // 加载状态
 const loading = useLoading();
@@ -22,7 +22,7 @@ watch([account, library, chainId], () => {
 const roleManageValue = ref<string>('');
 async function getCollectionRole() {
   loading.value = true;
-  const contract = new library.value.eth.Contract(MarketABI as AbiItem[], MarketContractAddress[chainId.value]);
+  const contract = new library.value.eth.Contract(AuroranMarketABI as AbiItem[], AuroranMarketContractAddress[chainId.value]);
   roleManageValue.value = await contract.methods.MANAGER_ROLE().call();
 
   loading.value = false;
@@ -51,7 +51,7 @@ async function query() {
   isSubmit.value = true;
   loading.value = true;
   try {
-    const contract = new library.value.eth.Contract(MarketABI as AbiItem[], MarketContractAddress[chainId.value]);
+    const contract = new library.value.eth.Contract(AuroranMarketABI as AbiItem[], AuroranMarketContractAddress[chainId.value]);
     CollectionIsManage.value = await contract.methods.hasRole(roleManageValue.value, library.value.utils.toChecksumAddress(formAccount.value)).call();
   } catch (error) {
     accountIsValid.value = true;
@@ -68,7 +68,7 @@ async function approve() {
   isSubmit.value = true;
   loading.value = true;
   try {
-    const contract = new library.value.eth.Contract(MarketABI as AbiItem[], MarketContractAddress[chainId.value]);
+    const contract = new library.value.eth.Contract(AuroranMarketABI as AbiItem[], AuroranMarketContractAddress[chainId.value]);
     if (CollectionIsManage.value) {
       await contract.methods.removeManager(library.value.utils.toChecksumAddress(formAccount.value)).send({ from: account.value });
     } else {

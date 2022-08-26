@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { AbiItem } from 'web3-utils'
-import { MarketContractAddress } from '@/constants/index';
-import MarketABI from '~~/constants/abis/Market_abi.json';
+import { AuroranMarketContractAddress, AuroranNFTQueryContractAddress } from '@/constants/index';
+import AuroranMarketABI from '~~/constants/abis/AuroranMarket.json';
+import AuroranNFTQueryABI from '~~/constants/abis/AuroranNFTQuery.json';
 
 import { INftListItem, INftOffer, IOfferLast } from '@/constants/interface/Nft';
 
@@ -17,6 +18,7 @@ nftInfo.value = props.nftInfo;
 // 加载状态
 const loading = useLoading();
 const timestamp = useTimestamp();
+const isExpire = ref<boolean>(false);
 
 // 引用plugin
 const { $compare, $truncateAccount, $parseTime } = useNuxtApp()
@@ -34,11 +36,15 @@ const nftOfferList = ref<INftOffer[]>([]);
 // 获取NFTS
 async function getNftOfferList() {
   nftOfferList.value = [];
-  const contract = new library.value.eth.Contract(MarketABI as AbiItem[], MarketContractAddress[chainId.value]);
-  const txRoundIdByNFTId = await contract.methods.txRoundIdByNFTId(nftInfo.value.nftId).call();
-  nftOfferLast.value = await contract.methods.offerLast(nftInfo.value.nftId, txRoundIdByNFTId).call();
+  const contract = new library.value.eth.Contract(AuroranNFTQueryABI as AbiItem[], AuroranNFTQueryContractAddress[chainId.value]);
+  const txRoundIdByNFTId = await contract.methods.getTxRoundIdByNFTId(nftInfo.value.nftInfo.nftId).call();
+  nftOfferLast.value = await contract.methods.getOfferLast(nftInfo.value.nftInfo.nftId, txRoundIdByNFTId).call();
+  // 获取结束信息
+  const paymentInfo = await contract.methods.getPaymentMap(nftInfo.value.nftInfo.nftId, txRoundIdByNFTId).call();
+  isExpire.value = parseInt(paymentInfo.endTime) <= (Date.parse(new Date().toString()) / 1000);
+
   // 获取列表
-  contract.methods.getOfferList(nftInfo.value.nftId, txRoundIdByNFTId)
+  contract.methods.getOfferListMap(nftInfo.value.nftInfo.nftId, txRoundIdByNFTId)
   .call({ from: account.value })
   .then(async (value: any) => {
     if (value.length > 0) {
@@ -58,7 +64,7 @@ async function getNftOfferList() {
     }
   });
   // 获取最新信息
-  const newNftInfo = await contract.methods.nftById(nftInfo.value.nftId).call();
+  const newNftInfo = await contract.methods.getNFT(nftInfo.value.nftInfo.token, nftInfo.value.nftInfo.tokenId).call();
   const tempItem = {
     ...nftInfo,
     ...newNftInfo,
@@ -73,8 +79,8 @@ onMounted(() => {
 // accept offer
 function accept() {
   loading.value = true;
-  const contract = new library.value.eth.Contract(MarketABI as AbiItem[], MarketContractAddress[chainId.value]);
-  contract.methods.deal(nftInfo.value.token, nftInfo.value.tokenId)
+  const contract = new library.value.eth.Contract(AuroranMarketABI as AbiItem[], AuroranMarketContractAddress[chainId.value]);
+  contract.methods.deal(nftInfo.value.nftInfo.token, nftInfo.value.nftInfo.tokenId)
   .send({ from: account.value })
   .then(() => {
     getNftOfferList();
@@ -107,12 +113,12 @@ function accept() {
             <td>{{ offer.account }}</td>
             <td>{{ offer.amount }}</td>
             <td>{{ offer.createTime }}</td>
-            <td v-if="!offer.finishedTime && nftInfo.onSale" class="text-primary">Active</td>
-            <td v-if="!offer.finishedTime && !nftInfo.onSale" class="text-danger">Failed</td>
-            <td v-if="offer.finishedTime && !nftInfo.onSale" class="text-info">Succeeded</td>
+            <td v-if="!offer.finishedTime && nftInfo.nftSale.onSale" class="text-primary">Active</td>
+            <td v-if="!offer.finishedTime && !nftInfo.nftSale.onSale" class="text-danger">Failed</td>
+            <td v-if="offer.finishedTime && !nftInfo.nftSale.onSale" class="text-info">Succeeded</td>
             <td>
               <button
-                v-if="offer.offerId === nftOfferLast.offerId && nftInfo.owner === account && nftInfo.onSale"
+                v-if="offer.offerId === nftOfferLast.offerId && nftOfferLast.account === account && nftInfo.nftSale.onSale && isExpire"
                 type="button"
                 class="btn btn-outline-primary btn-sm"
                 style="--bs-btn-padding-y: .25rem; --bs-btn-padding-x: .5rem; --bs-btn-font-size: .75rem;"

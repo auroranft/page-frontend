@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { AbiItem } from 'web3-utils'
-import { MarketContractAddress } from '@/constants/index';
-import MarketABI from '~~/constants/abis/Market_abi.json';
+import { AuroranNFTDataContractAddress } from '@/constants/index';
+import AuroranNFTDataABI from '~~/constants/abis/AuroranNFTData.json';
 
 import { ICollectionItem } from '@/constants/interface/Collection'
 
@@ -33,16 +33,15 @@ const collectionList = ref<ICollectionItem[]>([]);
 function getCollectionList() {
   collectionList.value = [];
   loading.value = true;
-  const contract = new library.value.eth.Contract(MarketABI as AbiItem[], MarketContractAddress[chainId.value]);
-  contract.methods.getCollectionTokenList()
+  const contract = new library.value.eth.Contract(AuroranNFTDataABI as AbiItem[], AuroranNFTDataContractAddress[chainId.value]);
+  contract.methods.getAllCollection()
   .call({ from: account.value })
-  .then(async (tokenList: string[]) => {
-    if (tokenList.length > 0) {
-      const getResult = tokenList.map(async (item: string) => {
-        const collection = await contract.methods.collectionMap(item).call();
-        const { data } = await useAsyncData(collection.token, () => $fetch(collection.tokenURI));
+  .then(async (value: ICollectionItem[]) => {
+    if (value.length > 0) {
+      const getResult = value.map(async (item: ICollectionItem) => {
+        const { data } = await useAsyncData(item.token, () => $fetch(item.tokenURI));
         const tempItem = {
-          ...collection,
+          ...item,
           ...{ metadata: data.value },
         };
         collectionList.value.push(tempItem);
@@ -63,7 +62,7 @@ onMounted(() => {
 // 审核专辑
 function audit(token: string, approve: boolean) {
   loading.value = true;
-  const contract = new library.value.eth.Contract(MarketABI as AbiItem[], MarketContractAddress[chainId.value]);
+  const contract = new library.value.eth.Contract(AuroranNFTDataABI as AbiItem[], AuroranNFTDataContractAddress[chainId.value]);
   contract.methods.auditCollection(token, approve)
   .send({ from: account.value })
   .then(() => {
@@ -77,7 +76,7 @@ function audit(token: string, approve: boolean) {
 // 是否显示专辑
 function show(token: string, approve: boolean) {
   loading.value = true;
-  const contract = new library.value.eth.Contract(MarketABI as AbiItem[], MarketContractAddress[chainId.value]);
+  const contract = new library.value.eth.Contract(AuroranNFTDataABI as AbiItem[], AuroranNFTDataContractAddress[chainId.value]);
   contract.methods.showCollection(token, approve)
   .send({ from: account.value })
   .then(() => {

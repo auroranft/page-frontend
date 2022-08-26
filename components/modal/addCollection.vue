@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { AbiItem } from 'web3-utils'
-import { MarketContractAddress } from '@/constants/index';
-import MarketABI from '~~/constants/abis/Market_abi.json';
+import { AuroranMarketContractAddress } from '@/constants/index';
+import AuroranMarketABI from '~~/constants/abis/AuroranMarket.json';
 
 import { defalutCollectionForm } from '@/constants/interface/Collection'
 
@@ -32,7 +32,7 @@ function createCollection() {
     && formModel.verifyRights
     && formModel.agreenTerms
   ) {
-    const contract = new library.value.eth.Contract(MarketABI as AbiItem[], MarketContractAddress[chainId.value]);
+    const contract = new library.value.eth.Contract(AuroranMarketABI as AbiItem[], AuroranMarketContractAddress[chainId.value]);
     contract.methods.addCollection(
       formModel.name,
       formModel.symbol,
@@ -56,7 +56,7 @@ function createCollection() {
 const currentRoyaltyRate = ref<number>(0);
 const maxRoyaltyRate = ref<number>(0);
 async function getBaseInfo() {
-  const contract = new library.value.eth.Contract(MarketABI as AbiItem[], MarketContractAddress[chainId.value]);
+  const contract = new library.value.eth.Contract(AuroranMarketABI as AbiItem[], AuroranMarketContractAddress[chainId.value]);
   maxRoyaltyRate.value = await contract.methods.maxRoyaltyRate().call({ from: account.value });
 }
 

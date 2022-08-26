@@ -25,16 +25,27 @@ const defalutNftForm: INftFormModel = {
   agreenTerms: false,
 }
 
-interface INftListItem {
+interface INftInfo {
   nftId: number,
   tokenId: number,
   token: string,
-  owner: string,
   creator: string,
-  collection: ICollectionItem,
   tokenURI: string,
+}
+interface INftSale {
+  nftId: number,
+  token: string,
+  tokenId: number,
+  owner: string,
   isBid: boolean,
   onSale: boolean,
+}
+
+interface INftListItem {
+  nftId: number,
+  nftInfo: INftInfo,
+  nftSale: INftSale,
+  collection: ICollectionItem,
   metadata?: INftFormModel,
 }
 

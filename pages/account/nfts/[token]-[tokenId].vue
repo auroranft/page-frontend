@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { AbiItem } from 'web3-utils'
-import { MarketContractAddress } from '@/constants/index';
-import MarketABI from '~~/constants/abis/Market_abi.json';
+import { AuroranMarketContractAddress, AuroranNFTQueryContractAddress } from '@/constants/index';
+import AuroranMarketABI from '~~/constants/abis/AuroranMarket.json';
+import AuroranNFTQueryABI from '~~/constants/abis/AuroranNFTQuery.json';
 
 import { INftListItem } from '@/constants/interface/Nft';
 
@@ -20,8 +21,8 @@ const timestamp = useTimestamp();
 const { $truncateAccount } = useNuxtApp()
 
 const { account, library, chainId } = useWeb3();
-watch([account, timestamp], () => {
-  if (!!account.value) {
+watch([account, library, chainId, timestamp], () => {
+  if (!!library.value && !!account.value && !!chainId.value) {
     loadNftData();
   }
 });
@@ -30,28 +31,18 @@ watch([account, timestamp], () => {
 const nftInfo = ref<INftListItem>();
 // 获取NFTS
 async function getNftInfo() {
-  const contract = new library.value.eth.Contract(MarketABI as AbiItem[], MarketContractAddress[chainId.value]);
-  const nftId = await contract.methods.nftIdMap(token, tokenId).call();
-  const value = await contract.methods.nftById(nftId).call();
-  const collection = await contract.methods.collectionMap(token).call();
+  loading.value = true;
+  const contract = new library.value.eth.Contract(AuroranNFTQueryABI as AbiItem[], AuroranNFTQueryContractAddress[chainId.value]);
+  const value = await contract.methods.getNFT(token, tokenId).call();
+  const collection = await contract.methods.getCollection(value.nftInfo.token).call();
 
-  const { data } = await useAsyncData(nftId, () => $fetch(value.tokenURI));
+  const { data } = await useAsyncData(value.nftInfo.nftId, () => $fetch(value.tokenURI));
   const tempItem = {
     ...value,
     ...{ collection: collection, metadata: data.value },
   };
   nftInfo.value = tempItem;
-  
-  // contract.methods.getNFTItem(token, tokenId)
-  // .call({ from: account.value })
-  // .then(async (value: any) => {
-  //   const { data } = await useAsyncData(value.nftId, () => $fetch(value.tokenURI));
-  //   const tempItem = {
-  //     ...value,
-  //     ...{ metadata: data.value },
-  //   };
-  //   nftInfo.value = tempItem;
-  // })
+  loading.value = false;
 }
 
 function loadNftData() {
@@ -64,7 +55,7 @@ function loadNftData() {
 function listCancelled() {
   if (!!token && !!tokenId) {
     loading.value = true;
-    const contract = new library.value.eth.Contract(MarketABI as AbiItem[], MarketContractAddress[chainId.value]);
+    const contract = new library.value.eth.Contract(AuroranMarketABI as AbiItem[], AuroranMarketContractAddress[chainId.value]);
     contract.methods.listCancelled(token, tokenId)
     .send({ from: account.value })
     .then(() => {
@@ -85,12 +76,12 @@ onMounted(() => {
 
 <template>
   <main>
-    <section v-if="nftInfo?.token" class="py-5 container">
+    <section v-if="nftInfo?.nftInfo.token" class="py-5 container">
       <div class="row py-lg-5">
         <div class="col-lg-6 col-md-12">
           <div class="ratio ratio-1x1 nft-img">
-            <!-- <img src="~/assets/images/logo.png" /> -->
-            <img :src="nftInfo.metadata?.fileUrl" />
+            <img v-if="nftInfo.metadata?.fileUrl" :src="nftInfo.metadata?.fileUrl" />
+            <img v-else src="~/assets/images/logo.png" />
           </div>
         </div>
         <div class="col-lg-6 col-md-12">
@@ -104,16 +95,19 @@ onMounted(() => {
               </p>
             </div>
             <div class="card-body">
-              <h3 class="card-title">{{ nftInfo.metadata.name }}</h3>
+              <h3 class="card-title">{{ nftInfo.metadata.name ? nftInfo.metadata.name : nftInfo.collection.name + ' #' + nftInfo.nftInfo.tokenId }}</h3>
               <p class="card-text">
-                Owned by 
-                <NuxtLink :to="`/account/${nftInfo.owner}`">
-                  {{ $truncateAccount(nftInfo.owner) }}
+                Owned: 
+                <NuxtLink :to="`/account/${nftInfo.nftSale.owner}`">
+                  {{ $truncateAccount(nftInfo.nftSale.owner) }}
                 </NuxtLink>
+              </p>
+              <p class="card-text">
+                Creator Royalty: {{ nftInfo.collection.royalty }} %
               </p>
               <div class="d-flex justify-content-start align-items-center">
                 <NftList :nftInfo="nftInfo" :key="timestamp" />
-                <button class="btn btn-danger ms-3" type="button" :disabled="!nftInfo.onSale || loading" @click="listCancelled">
+                <button class="btn btn-danger ms-3" type="button" :disabled="!nftInfo.nftSale.onSale || loading" @click="listCancelled">
                   <span v-if="loading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                   {{ loading ? 'Loading...' : 'List Cancelled' }}
                 </button>
@@ -127,7 +121,7 @@ onMounted(() => {
         <a class="ms-3" href="#offers">Offers <i class="bi bi-link-45deg"></i></a>
         <a class="ms-3" href="#listings">Listings <i class="bi bi-link-45deg"></i></a>
       </div>
-      <div class="mb-5">
+      <div class="mb-5" v-if="nftInfo.metadata?.properties">
         <h4>Properties</h4>
         <table class="table table-bordered">
           <thead>
@@ -177,6 +171,7 @@ onMounted(() => {
 <style scoped>
 .nft-img {
   width: 100%;
+  background-color: #f5f5f5;
 }
 .nft-img img {
   width: 100%;

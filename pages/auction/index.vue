@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { AbiItem } from 'web3-utils'
-import { MarketContractAddress } from '@/constants/index';
-import MarketABI from '~~/constants/abis/Market_abi.json';
+import { AuroranNFTQueryContractAddress } from '@/constants/index';
+import AuroranNFTQueryABI from '~~/constants/abis/AuroranNFTQuery.json';
 
 import { INftListItem } from '@/constants/interface/Nft';
 
@@ -30,13 +30,13 @@ const nftsList = ref<INftListItem[]>([]);
 // 获取NFTS
 function getNftsList() {
   nftsList.value = [];
-  const contract = new library.value.eth.Contract(MarketABI as AbiItem[], MarketContractAddress[chainId.value]);
+  const contract = new library.value.eth.Contract(AuroranNFTQueryABI as AbiItem[], AuroranNFTQueryContractAddress[chainId.value]);
   contract.methods.getSaleNFTList(true, true)
   .call({ from: account.value })
   .then(async (value: any) => {
     if (value.length > 0) {
       const getResult = value.map(async (item: INftListItem, index: number) => {
-        const { data } = await useAsyncData(index.toString(), () => $fetch(item.tokenURI));
+        const { data } = await useAsyncData(index.toString(), () => $fetch(item.nftInfo.tokenURI));
         const tempItem = {
           ...item,
           ...{ metadata: data.value },
@@ -83,19 +83,19 @@ onMounted(() => {
                   <i v-if="item.collection.approve" class="bi bi-patch-check-fill text-primary"></i>
                 </p>
               </div>
-              <NuxtLink :to="`/assets/${item.token}-${item.tokenId}`" class="ratio ratio-1x1 nft-img">
+              <NuxtLink :to="`/assets/${item.nftInfo.token}-${item.nftInfo.tokenId}`" class="ratio ratio-1x1 nft-img">
                 <!-- <img src="~/assets/images/logo.png" /> -->
                 <img :src="item.metadata?.fileUrl" />
               </NuxtLink>
               <div class="card-body">
                 <p class="card-text">
-                  <NuxtLink :to="`/assets/${item.token}-${item.tokenId}`">
-                    {{ item.collection.symbol }} - {{ item.tokenId }}
+                  <NuxtLink :to="`/assets/${item.nftInfo.token}-${item.nftInfo.tokenId}`">
+                    {{ item.collection.symbol }} - {{ item.nftInfo.tokenId }}
                   </NuxtLink>
                 </p>
                 <div class="d-flex justify-content-between align-items-center">
                   <div class="btn-group">
-                    <NuxtLink :to="`/assets/${item.token}-${item.tokenId}`">
+                    <NuxtLink :to="`/assets/${item.nftInfo.token}-${item.nftInfo.tokenId}`">
                       <button type="button" class="btn btn-sm btn-outline-primary">View</button>
                     </NuxtLink>
                   </div>

@@ -6,11 +6,13 @@ interface NftListProps {
 }
 const props = defineProps<NftListProps>();
 const nftInfo = props.nftInfo;
+
+const timestamp = useTimestamp();
 </script>
 
 <template>
   <ClientOnly>
-    <ModalNftBuy :nftInfo="nftInfo" />
-    <ModalNftOffer :nftInfo="nftInfo" class="ms-3" />
+    <ModalNftBuy :nftInfo="nftInfo" :key="timestamp + 1" />
+    <ModalNftOffer :nftInfo="nftInfo" class="ms-3" :key="timestamp + 2" />
   </ClientOnly>
 </template>

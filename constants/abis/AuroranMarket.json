@@ -25,6 +25,11 @@
         "internalType": "uint256",
         "name": "transferFeeRate_",
         "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "nftDataContractAddress_",
+        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
@@ -232,24 +237,6 @@
         "type": "address"
       },
       {
-        "internalType": "bool",
-        "name": "approve",
-        "type": "bool"
-      }
-    ],
-    "name": "auditCollection",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "token",
-        "type": "address"
-      },
-      {
         "internalType": "uint256",
         "name": "tokenId",
         "type": "uint256"
@@ -260,66 +247,6 @@
     "stateMutability": "payable",
     "type": "function",
     "payable": true
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "name": "collectionMap",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "token",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "owner",
-        "type": "address"
-      },
-      {
-        "internalType": "string",
-        "name": "name",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "symbol",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "tokenURI",
-        "type": "string"
-      },
-      {
-        "internalType": "uint256",
-        "name": "royalty",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "createTime",
-        "type": "uint256"
-      },
-      {
-        "internalType": "bool",
-        "name": "approve",
-        "type": "bool"
-      },
-      {
-        "internalType": "bool",
-        "name": "show",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function",
-    "constant": true
   },
   {
     "inputs": [
@@ -355,13 +282,56 @@
     "constant": true
   },
   {
-    "inputs": [],
-    "name": "getCollectionTokenList",
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getNftSaleMap",
     "outputs": [
       {
-        "internalType": "address[]",
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "nftId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "token",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address payable",
+            "name": "owner",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "isBid",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "onSale",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct MarketConstant.NFTSale",
         "name": "",
-        "type": "address[]"
+        "type": "tuple"
       }
     ],
     "stateMutability": "view",
@@ -369,13 +339,175 @@
     "constant": true
   },
   {
-    "inputs": [],
-    "name": "getCurrentNFTId",
-    "outputs": [
+    "inputs": [
       {
         "internalType": "uint256",
-        "name": "",
+        "name": "nftId",
         "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "txRoundId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getOfferLast",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "offerId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "totalAmount",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct MarketConstant.OfferLast",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function",
+    "constant": true
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "nftId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "txRoundId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getOfferListMap",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "offerId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "account",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "createTime",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "finishedTime",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "txRoundId",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct MarketConstant.Offer[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function",
+    "constant": true
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "nftId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "txRoundId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getPaymentMap",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "lister",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "payToken",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "payAmount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "bonusRate",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "createTime",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "cancelTime",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "finishedTime",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "endTime",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "txRoundId",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct MarketConstant.NFTPayment",
+        "name": "",
+        "type": "tuple"
       }
     ],
     "stateMutability": "view",
@@ -396,6 +528,26 @@
         "internalType": "bytes32",
         "name": "",
         "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function",
+    "constant": true
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "nftId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getTxRoundIdByNFTId",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -603,79 +755,13 @@
     "constant": true
   },
   {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "nftById",
+    "inputs": [],
+    "name": "nftDataContractAddress",
     "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "nftId",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "tokenId",
-        "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "token",
-        "type": "address"
-      },
-      {
-        "internalType": "address payable",
-        "name": "owner",
-        "type": "address"
-      },
-      {
-        "internalType": "address payable",
-        "name": "creator",
-        "type": "address"
-      },
-      {
-        "internalType": "string",
-        "name": "tokenURI",
-        "type": "string"
-      },
-      {
-        "internalType": "bool",
-        "name": "isBid",
-        "type": "bool"
-      },
-      {
-        "internalType": "bool",
-        "name": "onSale",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function",
-    "constant": true
-  },
-  {
-    "inputs": [
       {
         "internalType": "address",
         "name": "",
         "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "nftIdMap",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -705,111 +791,6 @@
     "stateMutability": "payable",
     "type": "function",
     "payable": true
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "offerLast",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "offerId",
-        "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "account",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "totalAmount",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function",
-    "constant": true
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "paymentMap",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "lister",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "payToken",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "payAmount",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "bonusRate",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "createTime",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "cancelTime",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "finishedTime",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "endTime",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "txRoundId",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function",
-    "constant": true
   },
   {
     "inputs": [],
@@ -870,24 +851,6 @@
       }
     ],
     "name": "revokeRole",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "token",
-        "type": "address"
-      },
-      {
-        "internalType": "string",
-        "name": "tokenURI",
-        "type": "string"
-      }
-    ],
-    "name": "setCollectionURI",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -999,24 +962,6 @@
   {
     "inputs": [
       {
-        "internalType": "address",
-        "name": "token",
-        "type": "address"
-      },
-      {
-        "internalType": "bool",
-        "name": "show",
-        "type": "bool"
-      }
-    ],
-    "name": "showCollection",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "bytes4",
         "name": "interfaceId",
         "type": "bytes4"
@@ -1049,26 +994,6 @@
     "constant": true
   },
   {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "txRoundIdByNFTId",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function",
-    "constant": true
-  },
-  {
     "inputs": [],
     "name": "wallet",
     "outputs": [
@@ -1086,62 +1011,5 @@
     "stateMutability": "payable",
     "type": "receive",
     "payable": true
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "nftId",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "txRoundId",
-        "type": "uint256"
-      }
-    ],
-    "name": "getOfferList",
-    "outputs": [
-      {
-        "components": [
-          {
-            "internalType": "uint256",
-            "name": "offerId",
-            "type": "uint256"
-          },
-          {
-            "internalType": "address",
-            "name": "account",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "amount",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "createTime",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "finishedTime",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "txRoundId",
-            "type": "uint256"
-          }
-        ],
-        "internalType": "struct Constant.Offer[]",
-        "name": "",
-        "type": "tuple[]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function",
-    "constant": true
   }
 ]

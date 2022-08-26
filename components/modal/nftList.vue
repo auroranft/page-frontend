@@ -1,8 +1,8 @@
 <script setup lang="ts">
-// import { Datepicker } from 'vanillajs-datepicker';
 import { AbiItem } from 'web3-utils'
-import { MarketContractAddress, TokenAddressERC20 } from '@/constants/index';
-import MarketABI from '~~/constants/abis/Market_abi.json';
+import { AuroranMarketContractAddress, AuroranNFTQueryContractAddress, TokenAddressERC20 } from '@/constants/index';
+import AuroranMarketABI from '~~/constants/abis/AuroranMarket.json';
+import AuroranNFTQueryABI from '~~/constants/abis/AuroranNFTQuery.json';
 import TokenERC721ABI from '~~/constants/abis/TokenERC721_abi.json';
 
 import { INftListItem } from '@/constants/interface/Nft';
@@ -30,6 +30,9 @@ watch([account], () => {
   }
 });
 
+const minDate = new Date(Date.parse(new Date().toString()) + 60 * 10 * 1000);
+const maxDate = new Date(Date.parse(new Date().toString()) + 60 * 60 * 24 * 30 * 1000);
+const endTime = ref<Date>(minDate);
 // 表单字段
 interface IFormModel {
   token: string,
@@ -42,13 +45,13 @@ interface IFormModel {
   agreenTerms: boolean,
 }
 const formModel = ref<IFormModel>({
-  token: nftInfo.value.token,
-  tokenId: nftInfo.value.tokenId,
+  token: nftInfo.value.nftInfo.token,
+  tokenId: nftInfo.value.nftInfo.tokenId,
   isBid: false,
   payToken: null,
   payAmount: null,
   bonusRate: 0,
-  endTime: Date.parse(new Date().toString()) / 1000 + 10 * 60,
+  endTime: 0,
   agreenTerms: false,
 });
 
@@ -57,14 +60,15 @@ const isBid = ref<boolean>(true);
 const currentBonusRate = ref<number>(0);
 const maxBonusRate = ref<number>(0);
 async function getBaseInfo() {
-  formModel.value.token = nftInfo.value.token;
-  formModel.value.tokenId = nftInfo.value.tokenId;
+  formModel.value.token = nftInfo.value.nftInfo.token;
+  formModel.value.tokenId = nftInfo.value.nftInfo.tokenId;
   formModel.value.payToken = TokenAddressERC20[chainId.value];
 
-  const contract = new library.value.eth.Contract(MarketABI as AbiItem[], MarketContractAddress[chainId.value]);
+  const contract = new library.value.eth.Contract(AuroranMarketABI as AbiItem[], AuroranMarketContractAddress[chainId.value]);
   maxBonusRate.value = await contract.methods.maxBonusRate().call({ from: account.value });
   // 获取最新信息
-  const newNftInfo = await contract.methods.nftById(nftInfo.value.nftId).call();
+  const contractQuery = new library.value.eth.Contract(AuroranNFTQueryABI as AbiItem[], AuroranNFTQueryContractAddress[chainId.value]);
+  const newNftInfo = await contractQuery.methods.getNFT(nftInfo.value.nftInfo.token, nftInfo.value.nftInfo.tokenId).call();
   const tempItem = {
     ...nftInfo,
     ...newNftInfo,
@@ -84,6 +88,7 @@ async function nftList() {
   isSubmit.value = true;
   loading.value = true;
 
+  formModel.value.endTime = Date.parse(new Date(endTime.value).toString()) / 1000;
   if (formModel.value.token
     && formModel.value.tokenId
     && formModel.value.payToken
@@ -93,13 +98,13 @@ async function nftList() {
     formModel.value.isBid = isBid.value;
 
     // NFT 授权
-    const contractForNFT = new library.value.eth.Contract(TokenERC721ABI as AbiItem[], nftInfo.value.token);
-    const isApprovedForAll = await contractForNFT.methods.isApprovedForAll(account.value, MarketContractAddress[chainId.value]).call();
+    const contractForNFT = new library.value.eth.Contract(TokenERC721ABI as AbiItem[], nftInfo.value.nftInfo.token);
+    const isApprovedForAll = await contractForNFT.methods.isApprovedForAll(account.value, AuroranMarketContractAddress[chainId.value]).call();
     if (!isApprovedForAll) {
-      await contractForNFT.methods.setApprovalForAll(MarketContractAddress[chainId.value], true).send({ from: account.value });
+      await contractForNFT.methods.setApprovalForAll(AuroranMarketContractAddress[chainId.value], true).send({ from: account.value });
     }
     // list
-    const contract = new library.value.eth.Contract(MarketABI as AbiItem[], MarketContractAddress[chainId.value]);
+    const contract = new library.value.eth.Contract(AuroranMarketABI as AbiItem[], AuroranMarketContractAddress[chainId.value]);
     contract.methods.list(
       formModel.value.token,
       formModel.value.tokenId,
@@ -125,11 +130,6 @@ async function nftList() {
 
 onMounted(() => {
   getBaseInfo();
-
-  // const elem = document.querySelector('input[name="endTime"]');
-  // const datepicker = new Datepicker(elem, {
-  //   // ...options
-  // }); 
 });
 
 </script>
@@ -141,7 +141,7 @@ onMounted(() => {
       class="btn btn-primary"
       data-bs-toggle="modal"
       data-bs-target="#modalNftList"
-      :disabled="nftInfo.onSale"
+      :disabled="nftInfo.nftSale.onSale"
     >
       List
     </button>
@@ -209,21 +209,18 @@ onMounted(() => {
 
                   <div class="my-4" v-if="isBid">
                     <label for="endTime" class="form-label">EndTime</label>
-                    <input type="number" class="form-control" id="endTime" v-model="formModel.endTime" :required="isBid">
+                    <Datepicker
+                      id="endTime"
+                      :required="isBid"
+                      :minDate="minDate"
+                      :maxDate="maxDate"
+                      v-model="endTime"
+                      format="yyyy-MM-dd HH:mm"
+                      modelType="timestamp"
+                    />
                     <div class="invalid-feedback">
                       You must input endTime
                     </div>
-
-                    <!-- <ClientOnly>
-                      <input type="text" name="endTime">
-                    </ClientOnly> -->
-                    <!-- <i class="bi bi-calendar-date input-group-text"></i>
-                    <label for="endTime" class="form-label">EndTime</label>
-                    <date-picker locale="en" type="datetime" mode="single" />
-                    <input type="text" id="endTime" class="datepicker_input form-control" placeholder="Please input end time" :required="isBid">
-                    <div class="invalid-feedback">
-                      You must input endTime
-                    </div> -->
                   </div>
 
                   <div class="form-check">

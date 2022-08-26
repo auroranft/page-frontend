@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { JSBI } from '@/constants/jsbi';
 import { AbiItem } from 'web3-utils'
-import { MarketContractAddress, ipfsUploadDomain, ipfsUploadPort, ipfsFilePrefix } from '@/constants/index';
+import { AuroranMarketContractAddress, AuroranNFTQueryContractAddress, ipfsUploadDomain, ipfsUploadPort, ipfsFilePrefix } from '@/constants/index';
 import TokenERC721ABI from '~~/constants/abis/TokenERC721_abi.json';
-import MarketABI from '~~/constants/abis/Market_abi.json';
+import AuroranMarketABI from '~~/constants/abis/AuroranMarket.json';
+import AuroranNFTQueryABI from '~~/constants/abis/AuroranNFTQuery.json';
 import TokenERC20ABI from '~~/constants/abis/TokenERC20_abi.json';
 import { create as ipfsHttpClient } from 'ipfs-http-client'
 
@@ -41,9 +42,9 @@ const ableBalance = ref<boolean>(false);
 const ableApprove = ref<boolean>(false);
 // 查询余额与授权
 async function queryBalanceAndApprove() {
-  const marketContractAddress = MarketContractAddress[chainId.value];
+  const marketContractAddress = AuroranMarketContractAddress[chainId.value];
   // 获取配置代币信息
-  const marketContract = new library.value.eth.Contract(MarketABI as AbiItem[], marketContractAddress);
+  const marketContract = new library.value.eth.Contract(AuroranMarketABI as AbiItem[], marketContractAddress);
   newNFTFeeToken.value = await marketContract.methods.newNFTFeeToken().call();
   newNFTFeeAmount.value = await marketContract.methods.newNFTFeeAmount().call();
   // 获取当前账户余额
@@ -67,17 +68,14 @@ async function queryBalanceAndApprove() {
 const collectionList = ref<ICollectionItem[]>([]);
 // 刷新专辑列表
 function refreshCollection() {
-  const contract = new library.value.eth.Contract(MarketABI as AbiItem[], MarketContractAddress[chainId.value]);
+  const contract = new library.value.eth.Contract(AuroranNFTQueryABI as AbiItem[], AuroranNFTQueryContractAddress[chainId.value]);
   collectionList.value = [];
-  contract.methods.getCollectionTokenList()
+  contract.methods.getCollectionListByOwner()
   .call({ from: account.value })
-  .then(async (tokenList: string[]) => {
-    if (tokenList.length > 0) {
-      const getResult = tokenList.map(async (item: string) => {
-        const collection = await contract.methods.collectionMap(item).call();
-        if (collection.owner === account.value) {
-          collectionList.value.push(collection);
-        }
+  .then(async (value: ICollectionItem[]) => {
+    if (value.length > 0) {
+      const getResult = value.map(async (item: ICollectionItem) => {
+        collectionList.value.push(item);
       })
       await Promise.all(getResult);
       if (collectionList.value.length > 0) {
@@ -159,31 +157,43 @@ async function createNft() {
       const added = await client.add(data);
       const url = `${ipfsUploadDomain}${ipfsFilePrefix}/${added.path}`;
       /* after file is uploaded to IPFS, return the URL to use it in the transaction */
-      const marketContractAddress = MarketContractAddress[chainId.value];
-      // 先判断是否有权限
-      const contractForNFT = new library.value.eth.Contract(TokenERC721ABI as AbiItem[], formModel.collection);
-      const mintRole = await contractForNFT.methods.MINTER_ROLE().call();
-      const hasRole = await contractForNFT.methods.hasRole(mintRole, marketContractAddress).call();
-      if (!hasRole) {
-        await contractForNFT.methods.grantRole(mintRole, marketContractAddress).send({ from: account.value });
-      }
-      // NFT 授权
-      const isApprovedForAll = await contractForNFT.methods.isApprovedForAll(account.value, MarketContractAddress[chainId.value]).call();
-      if (!isApprovedForAll) {
-        await contractForNFT.methods.setApprovalForAll(MarketContractAddress[chainId.value], true).send({ from: account.value });
+
+      // ERC20 授权
+      if (!ableApprove.value) {
+        const erc20Contract = new library.value.eth.Contract(TokenERC20ABI as AbiItem[], newNFTFeeToken.value);
+        await erc20Contract.methods.approve(AuroranMarketContractAddress[chainId.value], newNFTFeeAmount.value).send({ from: account.value });
+        ableApprove.value = true;
       }
       // Mint
-      const contract = new library.value.eth.Contract(MarketABI as AbiItem[], MarketContractAddress[chainId.value]);
-      contract.methods.newNFT(formModel.collection, account.value, url).send({
-        from: account.value
-      }).then((value) => {
-        queryBalanceAndApprove();
-        loading.value = false;
-        router.push('/account/nfts');
-      }).catch((e: any) => {
-        loading.value = false;
-        // router.push('/account/nfts');
-      });
+      const contract = new library.value.eth.Contract(AuroranMarketABI as AbiItem[], AuroranMarketContractAddress[chainId.value]);
+      await contract.methods.newNFT(formModel.collection, account.value, url).send({ from: account.value });
+      queryBalanceAndApprove();
+      loading.value = false;
+
+      // const marketContractAddress = AuroranMarketContractAddress[chainId.value];
+      // // 先判断是否有权限
+      // const contractForNFT = new library.value.eth.Contract(TokenERC721ABI as AbiItem[], formModel.collection);
+      // const mintRole = await contractForNFT.methods.MINTER_ROLE().call();
+      // const hasRole = await contractForNFT.methods.hasRole(mintRole, marketContractAddress).call();
+      // if (!hasRole) {
+      //   await contractForNFT.methods.grantRole(mintRole, marketContractAddress).send({ from: account.value });
+      // }
+      // // NFT 授权
+      // const isApprovedForAll = await contractForNFT.methods.isApprovedForAll(account.value, AuroranMarketContractAddress[chainId.value]).call();
+      // if (!isApprovedForAll) {
+      //   await contractForNFT.methods.setApprovalForAll(AuroranMarketContractAddress[chainId.value], true).send({ from: account.value });
+      // }
+      // // Mint
+      // const contract = new library.value.eth.Contract(AuroranMarketABI as AbiItem[], AuroranMarketContractAddress[chainId.value]);
+      // contract.methods.newNFT(formModel.collection, account.value, url).send({
+      //   from: account.value
+      // }).then((value) => {
+      //   queryBalanceAndApprove();
+      //   loading.value = false;
+      //   router.push('/account/nfts');
+      // }).catch((e: any) => {
+      //   loading.value = false;
+      // });
     } catch (error) {
       console.log('Error uploading file: ', error);
       loading.value = false;
@@ -201,11 +211,11 @@ async function createNftTest() {
       // ERC20 授权
       if (!ableApprove.value) {
         const erc20Contract = new library.value.eth.Contract(TokenERC20ABI as AbiItem[], newNFTFeeToken.value);
-        await erc20Contract.methods.approve(MarketContractAddress[chainId.value], newNFTFeeAmount.value).send({ from: account.value });
+        await erc20Contract.methods.approve(AuroranMarketContractAddress[chainId.value], newNFTFeeAmount.value).send({ from: account.value });
         ableApprove.value = true;
       }
       // Mint
-      const contract = new library.value.eth.Contract(MarketABI as AbiItem[], MarketContractAddress[chainId.value]);
+      const contract = new library.value.eth.Contract(AuroranMarketABI as AbiItem[], AuroranMarketContractAddress[chainId.value]);
       await contract.methods.newNFT(formModel.collection, account.value, commonURI).send({ from: account.value });
       queryBalanceAndApprove();
       loading.value = false;
@@ -216,7 +226,7 @@ async function createNftTest() {
 
 
 
-    // const marketContractAddress = MarketContractAddress[chainId.value];
+    // const marketContractAddress = AuroranMarketContractAddress[chainId.value];
     // // 先判断是否有权限
     // const contractForNFT = new library.value.eth.Contract(TokenERC721ABI as AbiItem[], formModel.collection);
     // const mintRole = await contractForNFT.methods.MINTER_ROLE().call();
@@ -225,12 +235,12 @@ async function createNftTest() {
     //   await contractForNFT.methods.grantRole(mintRole, marketContractAddress).send({ from: account.value });
     // }
     // // NFT 授权
-    // const isApprovedForAll = await contractForNFT.methods.isApprovedForAll(account.value, MarketContractAddress[chainId.value]).call();
+    // const isApprovedForAll = await contractForNFT.methods.isApprovedForAll(account.value, AuroranMarketContractAddress[chainId.value]).call();
     // if (!isApprovedForAll) {
-    //   await contractForNFT.methods.setApprovalForAll(MarketContractAddress[chainId.value], true).send({ from: account.value });
+    //   await contractForNFT.methods.setApprovalForAll(AuroranMarketContractAddress[chainId.value], true).send({ from: account.value });
     // }
     // // Mint
-    // const contract = new library.value.eth.Contract(MarketABI as AbiItem[], MarketContractAddress[chainId.value]);
+    // const contract = new library.value.eth.Contract(AuroranMarketABI as AbiItem[], AuroranMarketContractAddress[chainId.value]);
     // contract.methods.newNFT(formModel.collection, account.value, commonURI).send({
     //   from: account.value
     // }).then(() => {

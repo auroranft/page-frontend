@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { JSBI } from '@/constants/jsbi';
 import { AbiItem } from 'web3-utils'
-import { MarketContractAddress } from '@/constants/index';
-import MarketABI from '~~/constants/abis/Market_abi.json';
+import { AuroranMarketContractAddress, AuroranNFTQueryContractAddress } from '@/constants/index';
+import AuroranMarketABI from '~~/constants/abis/AuroranMarket.json';
+import AuroranNFTQueryABI from '~~/constants/abis/AuroranNFTQuery.json';
 import TokenERC20ABI from '~~/constants/abis/TokenERC20_abi.json';
 
 import { INftListItem } from '@/constants/interface/Nft';
@@ -16,16 +17,14 @@ interface NftListProps {
 const props = defineProps<NftListProps>();
 nftInfo.value = props.nftInfo;
 
-const isSale = nftInfo.value.onSale && nftInfo.value.isBid;
+const isSale = nftInfo.value.nftSale.onSale && nftInfo.value.nftSale.isBid;
 const ableSale = ref<boolean>(isSale);
 const isExpire = ref<boolean>(false);
 
 const { account, library, chainId } = useWeb3();
 watch([account, isExpire], () => {
   if (!!account.value && !!library.value && !!chainId.value) {
-    ableSale.value = isSale &&
-      (account.value !== nftInfo.value.owner) &&
-      !isExpire.value;
+    queryBalanceAndApprove();
   }
 });
 
@@ -43,8 +42,8 @@ interface IFormModel {
   agreenTerms: boolean,
 }
 const formModel = ref<IFormModel>({
-  token: nftInfo.value.token,
-  tokenId: nftInfo.value.tokenId,
+  token: nftInfo.value.nftInfo.token,
+  tokenId: nftInfo.value.nftInfo.tokenId,
   amount: 0,
   agreenTerms: false,
 });
@@ -54,42 +53,28 @@ const offerAmount = ref<number>(0);
 
 const paymentToken = ref<string>(null);
 const paymentAmount = ref<number>(0);
-const ableBalance = ref<boolean>(false);
-const ableApprove = ref<boolean>(false);
 // 查询余额与授权
 async function queryBalanceAndApprove() {
-  formModel.value.token = nftInfo.value.token;
-  formModel.value.tokenId = nftInfo.value.tokenId;
-  const marketContractAddress = MarketContractAddress[chainId.value];
+  formModel.value.token = nftInfo.value.nftInfo.token;
+  formModel.value.tokenId = nftInfo.value.nftInfo.tokenId;
+  const marketContractAddress = AuroranMarketContractAddress[chainId.value];
   // 获取支付信息
-  const marketContract = new library.value.eth.Contract(MarketABI as AbiItem[], marketContractAddress);
-  const txRoundIdByNFTId = await marketContract.methods.txRoundIdByNFTId(nftInfo.value.nftId).call();
-  const paymentInfo = await marketContract.methods.paymentMap(nftInfo.value.nftId, txRoundIdByNFTId).call();
+  const marketContract = new library.value.eth.Contract(AuroranMarketABI as AbiItem[], marketContractAddress);
+  const txRoundIdByNFTId = await marketContract.methods.getTxRoundIdByNFTId(nftInfo.value.nftInfo.nftId).call();
+  const paymentInfo = await marketContract.methods.getPaymentMap(nftInfo.value.nftInfo.nftId, txRoundIdByNFTId).call();
   paymentToken.value = paymentInfo.payToken;
   paymentAmount.value = paymentInfo.payAmount;
   isExpire.value = parseInt(paymentInfo.endTime) <= (Date.parse(new Date().toString()) / 1000);
   // 获取最新信息
-  const newNftInfo = await marketContract.methods.nftById(nftInfo.value.nftId).call();
+  const queryContract = new library.value.eth.Contract(AuroranNFTQueryABI as AbiItem[], AuroranNFTQueryContractAddress[chainId.value]);
+  const newNftInfo = await queryContract.methods.getNFT(nftInfo.value.nftInfo.token, nftInfo.value.nftInfo.tokenId).call();
   const tempItem = {
     ...nftInfo,
     ...newNftInfo,
   };
   nftInfo.value = tempItem;
-  // 获取当前账户余额
-  const erc20Contract = new library.value.eth.Contract(TokenERC20ABI as AbiItem[], paymentInfo.payToken);
-  const balance = await erc20Contract.methods.balanceOf(account.value).call();
-  if (JSBI.greaterThanOrEqual(JSBI.BigInt(balance), JSBI.BigInt(paymentAmount.value))) {
-    ableBalance.value = true;
-  } else {
-    ableBalance.value = false;
-  }
-  // 获取当前账户授权额度
-  const allowance = await erc20Contract.methods.allowance(account.value, marketContractAddress).call();
-  if (JSBI.greaterThanOrEqual(JSBI.BigInt(allowance), JSBI.BigInt(paymentAmount.value))) {
-    ableApprove.value = true;
-  } else {
-    ableApprove.value = false;
-  }
+
+  ableSale.value = nftInfo.value.nftSale.onSale && nftInfo.value.nftSale.isBid && account.value !== nftInfo.value.nftSale.owner;
 }
 
 const minPrice = ref<number>(0);
@@ -99,11 +84,11 @@ const isAbleAmount = ref<boolean>(false);
 const isAbleAgreen = ref<boolean>(false);
 
 async function queryLastOffer() {
-  const contract = new library.value.eth.Contract(MarketABI as AbiItem[], MarketContractAddress[chainId.value]);
-  const txRoundIdByNFTId = await contract.methods.txRoundIdByNFTId(nftInfo.value.nftId).call();
-  const offerLast = await contract.methods.offerLast(nftInfo.value.nftId, txRoundIdByNFTId).call();
+  const contract = new library.value.eth.Contract(AuroranMarketABI as AbiItem[], AuroranMarketContractAddress[chainId.value]);
+  const txRoundIdByNFTId = await contract.methods.getTxRoundIdByNFTId(nftInfo.value.nftInfo.nftId).call();
+  const offerLast = await contract.methods.getOfferLast(nftInfo.value.nftInfo.nftId, txRoundIdByNFTId).call();
   minPrice.value = parseFloat(library.value.utils.fromWei(offerLast.amount.toString(), 'ether'));
-  const offerList = await contract.methods.getOfferList(nftInfo.value.nftId, txRoundIdByNFTId).call();
+  const offerList = await contract.methods.getOfferListMap(nftInfo.value.nftInfo.nftId, txRoundIdByNFTId).call();
   offerListLength.value = offerList.length;
   if (offerList.length > 0) {
     offerAmount.value = minPrice.value + 1;
@@ -135,7 +120,7 @@ async function offer() {
     && isAbleAmount.value
     && isAbleAgreen.value
   ) {
-    const marketContractAddress = MarketContractAddress[chainId.value];
+    const marketContractAddress = AuroranMarketContractAddress[chainId.value];
     const offerPrice = library.value.utils.toWei(formModel.value.amount.toString(), 'ether');
     // 授权
     const erc20Contract = new library.value.eth.Contract(TokenERC20ABI as AbiItem[], paymentToken.value);
@@ -149,6 +134,8 @@ async function offer() {
         console.info(e);
         loading.value = false;
         isSubmit.value = false;
+        timestamp.value = Date.parse(new Date().toString());
+        document.getElementById('closeModalNftOffer').click();
       });
     } else {
       submitOffer(marketContractAddress, offerPrice);
@@ -161,7 +148,7 @@ async function offer() {
 
 function submitOffer(marketContractAddress: string, offerPrice: string) {
   // 报价
-  const contract = new library.value.eth.Contract(MarketABI as AbiItem[], marketContractAddress);
+  const contract = new library.value.eth.Contract(AuroranMarketABI as AbiItem[], marketContractAddress);
   contract.methods.offer(
     formModel.value.token,
     formModel.value.tokenId,
@@ -177,6 +164,8 @@ function submitOffer(marketContractAddress: string, offerPrice: string) {
     console.info(e);
     loading.value = false;
     isSubmit.value = false;
+    timestamp.value = Date.parse(new Date().toString());
+    document.getElementById('closeModalNftOffer').click();
   })
 }
 
@@ -184,9 +173,6 @@ onMounted(() => {
   if (!!library.value && !!account.value && !!chainId.value) {
     queryBalanceAndApprove();
     queryLastOffer();
-    ableSale.value = isSale &&
-      (account.value !== nftInfo.value.owner) &&
-      !isExpire.value;
   }
 });
 

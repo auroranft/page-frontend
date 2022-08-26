@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { AbiItem } from 'web3-utils'
-import { MarketContractAddress, NullAddress } from '@/constants/index';
-import MarketABI from '~~/constants/abis/Market_abi.json';
+import { AuroranMarketContractAddress, EventFromBlock, NullAddress } from '@/constants/index';
+import AuroranMarketABI from '~~/constants/abis/AuroranMarket.json';
 
 import { INftListItem, IHistoryEvent } from '@/constants/interface/Nft';
 
@@ -26,42 +26,38 @@ const nftHistoryList = ref<IHistoryEvent[]>([]);
 // 获取NFTS
 async function getNftHistoryList() {
   nftHistoryList.value = [];
-  const contract = new library.value.eth.Contract(MarketABI as AbiItem[], MarketContractAddress[chainId.value]);
-  contract.events.allEvents({
-    filter: {
-      address: MarketContractAddress[chainId.value]
-    }
-  }, function(error, event) {
-    console.log(error);
-    console.log(event);
-  });
+  const contract = new library.value.eth.Contract(AuroranMarketABI as AbiItem[], AuroranMarketContractAddress[chainId.value]);
   contract.getPastEvents('historyEvent', { // historyEvent, allEvents
     filter: {
-      token: nftInfo.token,
-      tokenId: nftInfo.tokenId
+      token: nftInfo.nftInfo.token,
+      tokenId: nftInfo.nftInfo.tokenId
     },
-    // fromBlock: 0,
-    // toBlock: 'latest'
+    fromBlock: EventFromBlock[chainId.value],
+    toBlock: 'latest'
   }, async (error: any, events: any) => {
-    if (events && events.length > 0) {
-      const getResult = events.map((event: any) => {
-        const tempItem = {
-          ...event.returnValues,
-          ...{
-            blockHash: event.blockHash,
-            blockNumber: event.blockNumber,
-            token: $truncateAccount(event.returnValues.token),
-            from: event.returnValues.from !== NullAddress ? $truncateAccount(event.returnValues.from) : 'Null Address',
-            to: event.returnValues.to !== NullAddress ? $truncateAccount(event.returnValues.to) : '',
-            payToken: $truncateAccount(event.returnValues.payToken),
-            payAmount: library.value.utils.fromWei(event.returnValues.payAmount.toString()),
-            createTime: $parseTime(parseInt(event.returnValues.createTime.toString())),
-          },
-        };
-        nftHistoryList.value.push(tempItem);
-      });
-      await Promise.all(getResult);
-      nftHistoryList.value.sort($compare("blockNumber"));
+    if (!error) {
+      if (events && events.length > 0) {
+        const getResult = events.map((event: any) => {
+          const tempItem = {
+            ...event.returnValues,
+            ...{
+              blockHash: event.blockHash,
+              blockNumber: event.blockNumber,
+              token: $truncateAccount(event.returnValues.token),
+              from: event.returnValues.from !== NullAddress ? $truncateAccount(event.returnValues.from) : 'Null Address',
+              to: event.returnValues.to !== NullAddress ? $truncateAccount(event.returnValues.to) : '',
+              payToken: $truncateAccount(event.returnValues.payToken),
+              payAmount: library.value.utils.fromWei(event.returnValues.payAmount.toString()),
+              createTime: $parseTime(parseInt(event.returnValues.createTime.toString())),
+            },
+          };
+          nftHistoryList.value.push(tempItem);
+        });
+        await Promise.all(getResult);
+        nftHistoryList.value.sort($compare("blockNumber"));
+      }
+    } else {
+      console.info(error);
     }
   });
 }
